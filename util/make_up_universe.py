@@ -76,13 +76,13 @@ def get_universe():
     mapping = {',': '', 'N/A': '0'}
     df.replace(mapping, regex=True, inplace=True)
 
-    cols = ['거래량', '매출액', '매출액증가율', 'ROE', 'PER']   #사용할 column을 설정
+    cols = ['거래량', '매출액', '매출액증가율', '영업이익', 'ROE', 'PER']   #사용할 column을 설정
 
     df[cols] = df[cols].astype(float)   #column들을 숫자 타입으로 변환(NaverFinance를 크롤링해 온 데이터는 str로 되어있음)
 
-    df = df[(df['거래량'] > 0) & (df['매출액'] > 0) & (df['매출액증가율'] > 0) & (df['ROE'] > 0) & (df['PER'] > 0) & (~df.종목명.str.contains("지주")) & (~df.종목명.str.contains("홀딩스"))]
+    df = df[(df['거래량'] > 0) & (df['매출액'] > 0) & (df['매출액증가율'] > 0) & (df['영업이익'] > 0) & (df['ROE'] > 0) & (df['PER'] > 0) & (~df.종목명.str.contains("지주")) & (~df.종목명.str.contains("홀딩스"))]
 
-    df['1/PER'] = 1/df['PER']   #PER 역수
+    df['1/PER'] = 1 / df['PER']   #PER 역수
 
     df['RANK_ROE'] = df['ROE'].rank(method='max', ascending=False) #ROE 순위계산
 
@@ -99,9 +99,10 @@ def get_universe():
     df.to_excel('universe.xlsx')
     return df['종목명'].tolist()
 
-if __name__ == "__main__":  #이 모듈을 import할 때 이 코드들은 실행되지 않게 함함
+if __name__ == "__main__":  #이 모듈을 import할 때 이 코드들은 실행되지 않게 함
     print('Start')
     # execute_crawler()
     # get_universe()
-    get_universe()
+    universe = get_universe()
+    print(universe)
     print('End')

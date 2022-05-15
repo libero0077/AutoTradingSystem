@@ -1,9 +1,7 @@
-from api.Kiwoom import *
 from strategy.RSIStrategy import *
 import sys
 
 app = QApplication(sys.argv) #Kiwoom 클래스를 객체화하는 메인 루프
-kiwoom = Kiwoom()   #Kiwoom 클래스를 객체화하는 메인 루프
 
 rsi_strategy = RSIStrategy()
 rsi_strategy.start()

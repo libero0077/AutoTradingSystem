@@ -16,4 +16,4 @@ def check_adjacent_transaction_closed_for_buying():
     now = datetime.now()
     base_time = now.replace(hour=15, minute=0, second=0, microsecond=0)
     end_time = now.replace(hour=15, minute=20, second=0, microsecond=0)
-    return base_time <= now <= end_time
+    return base_time <= now < end_time

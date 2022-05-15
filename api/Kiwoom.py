@@ -42,7 +42,7 @@ class Kiwoom(QAxWidget):
         self.login_event_loop.exit()    #로그인 응답 대기를 종료하는 코드
 
     def _comm_connect(self):    #로그인을 요청할 함수
-        self.dynamicCall(("CommConnect"))
+        self.dynamicCall("CommConnect()")
 
         self.login_event_loop = QEventLoop()    #로그인이 되지 않으면 다른 코드 동작에 에러가 발생하므로, 로그인 응답 대기 설정
         self.login_event_loop.exec_()
@@ -85,9 +85,9 @@ class Kiwoom(QAxWidget):
             self.tr_event_loop.exec_()  #요청이 끝날때까지 대기 진입
 
             for key, val in self.tr_data.items():
-                ohlcv[key][-1:] = val   #추가로 받은 데이터를 이어붙임.
+                ohlcv[key][-1:] += val   #추가로 받은 데이터를 이어붙임.
 
-        df = pd.DataFrame(ohlcv, columns=['open', 'high', 'low', 'close', 'volume'], index=ohlcv['data'])
+        df = pd.DataFrame(ohlcv, columns=['open', 'high', 'low', 'close', 'volume'], index=ohlcv['date'])
 
         return df[::-1]
 
@@ -102,17 +102,17 @@ class Kiwoom(QAxWidget):
             self.has_next_tr_data = False
 
         if rqname == "opt10081_req":    #opt10081은 '주식일봉차트조회요청'의 sRQName
-            ohlcv = {'data': [], 'open': [], 'high': [], 'low': [], 'close': [], 'volume': []}  #ohlcv = 각 변수의 첫 글자
+            ohlcv = {'date': [], 'open': [], 'high': [], 'low': [], 'close': [], 'volume': []}  #ohlcv = 각 변수의 첫 글자
 
             for i in range(tr_data_cnt):
-                data = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "일자")  #해당 trcode와 rqname에 해당하는 호출 데이터들을 순서대로 집어넣음.
+                date = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "일자")  #해당 trcode와 rqname에 해당하는 호출 데이터들을 순서대로 집어넣음.
                 open = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "시가")
                 high = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "고가")
                 low = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "저가")
                 close = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "현재가")
                 volume = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "거래량")
 
-                ohlcv['data'].append(data.strip())  #자료형 변경
+                ohlcv['date'].append(date.strip())  #자료형 변경
                 ohlcv['open'].append(int(open))
                 ohlcv['high'].append(int(high))
                 ohlcv['low'].append(int(low))
@@ -183,7 +183,7 @@ class Kiwoom(QAxWidget):
                 return_rate = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "수익률(%)")
                 current_price = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "현재가")
                 total_purchase_price = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "매입금액")
-                available_quatity = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "매매가능수량")
+                available_quantity = self.dynamicCall("GetCommData(QString, QString, int, QString", trcode, rqname, i, "매매가능수량")
 
                 code = code.strip()[1:] #리스트로 변환 및 가공
                 code_name = code_name.strip()
@@ -192,7 +192,7 @@ class Kiwoom(QAxWidget):
                 return_rate = float(return_rate)
                 current_price = int(current_price)
                 total_purchase_price = int(total_purchase_price)
-                available_quatity = int(available_quatity)
+                available_quantity = int(available_quantity)
 
                 self.balance[code] = {
                     '종목명': code_name,
@@ -201,13 +201,13 @@ class Kiwoom(QAxWidget):
                     '수익률': return_rate,
                     '현재가': current_price,
                     '매입금액': total_purchase_price,
-                    '매매가능수량': available_quatity
+                    '매매가능수량': available_quantity
                 }
 
             self.tr_data = self.balance
 
         self.tr_event_loop.exit()   #TR 요청 응답 대기를 종료하는 코드
-        time.sleep(0.25)    #키움 API 정책 상 1초에 최대 5회의 요청만 허가됨. 0.2초당 1회씩 요청 가능하나 좀 더 여유있게 0.25초로 설정
+        time.sleep(0.5)    #키움 API 정책 상 1초에 최대 5회의 요청만 허가됨. 0.2초당 1회씩 요청 가능하나 좀 더 여유있게 0.25초로 설정
 
     def send_order(self, rqname, screen_no, order_type, code, order_quantity, order_price,  #주문 발생, RQName, 주문유형(매수도, 취소 등), 종목코드, 수량, 가격 등을 매개변수로 받음.
                    order_classification, origin_order_number=""):
@@ -220,7 +220,7 @@ class Kiwoom(QAxWidget):
     def set_real_reg(self, str_screen_no, str_code_list, str_fid_list, str_opt_type):   #실시간 체결 정보 수신을 희망하는 종목들을 등록
         self.dynamicCall("SetRealReg(QString, QString, QString, QString", str_screen_no, str_code_list, str_fid_list, str_opt_type)
 
-        time.sleep(0.25)
+        time.sleep(0.5)
 
     def _on_receive_real_data(self, s_code, real_type, real_data):   #실시간 데이터를 수신하는 함수
         if real_type == "장시작시간": #장 시작 시간이 늦어져도 큰큰 문제 없게함.
@@ -244,7 +244,7 @@ class Kiwoom(QAxWidget):
             top_priority_bid = abs(int(top_priority_bid))
             accum_volume = abs(int(accum_volume))
 
-            print(s_code, signed_at, close, high, open, low, top_priority_ask, top_priority_bid, accum_volume)
+            # print(s_code, signed_at, close, high, open, low, top_priority_ask, top_priority_bid, accum_volume)
 
             if s_code not in self.universe_realtime_transaction_info:
                 self.universe_realtime_transaction_info.update({s_code: {}}) #프로그램 실행 중 지속 갱신해야 하므로 .update를 사용
@@ -259,8 +259,6 @@ class Kiwoom(QAxWidget):
                 "(최우선)매수호가": top_priority_bid,
                 "누적거래량": accum_volume
             })
-
-
 
     def _on_receive_msg(self, screen_no, rqname, trcode, msg):  #어떤 요청에서 온 메세지인지 구분
         print("[Kiwoom] _on_receive_msg is called {} / {} / {} / {}".format(screen_no, rqname, trcode, msg))
@@ -316,8 +314,8 @@ class Kiwoom(QAxWidget):
     def get_balance(self): #opw00018 : 계좌 평가 잔고 내역 요청
         self.dynamicCall("SetInputValue(QString, QString)", "계좌번호", self.account_number)
         self.dynamicCall("SetInputValue(QString, QString)", "비밀번호입력매체구분", "00")
-        self.dynamicCall("SetInputValue(QString, QString)", "조회구분", "2")
-        self.dynamicCall("CommRqData(Qstring,QString, int, QString)", "opw00018_req", "opw00018", 0, "0002")
+        self.dynamicCall("SetInputValue(QString, QString)", "조회구분", "1")
+        self.dynamicCall("CommRqData(QString, QString, int, QString)", "opw00018_req", "opw00018", 0, "0002")
 
         self.tr_event_loop.exec_()
         return self.tr_data
@@ -326,7 +324,7 @@ class Kiwoom(QAxWidget):
         self.dynamicCall("SetInputValue(QString, QString)", "계좌번호", self.account_number)
         self.dynamicCall("SetInputValue(QString, QString)", "비밀번호입력매체구분", "00")
         self.dynamicCall("SetInputValue(QString, QString)", "조회구분", "2")
-        self.dynamicCall("CommRqData(Qstring,QString, int, QString)", "opw00001_req", "opw00001", 0, "0002")
+        self.dynamicCall("CommRqData(QString,QString, int, QString)", "opw00001_req", "opw00001", 0, "0002")
 
         self.tr_event_loop.exec_()
         return self.tr_data

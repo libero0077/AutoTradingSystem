@@ -1,6 +1,6 @@
 import sqlite3
-conn = sqlite3.connect('universe_price.db', isolation_level=None) #universe_price라는 데이터베이스 파일에 연결하겠다는 의미. 있으면 연결, 없으면 생성.
-                                                                  #isolation_level을 None으로 하면 일일이 커밋 안해도됨.
+# conn = sqlite3.connect('universe_price.db', isolation_level=None) #universe_price라는 데이터베이스 파일에 연결하겠다는 의미. 있으면 연결, 없으면 생성.
+#                                                                   #isolation_level을 None으로 하면 일일이 커밋 안해도됨.
 
 def check_table_exist(db_name, table_name):
     with sqlite3.connect('{}.db'.format(db_name)) as con:   #매개변수를 파일명으로 하는 db파일 생성
@@ -22,6 +22,9 @@ def execute_sql(db_name, sql, param={}):
         cur = con.cursor()
         cur.execute(sql, param)
         return cur
+
+if __name__=="__main__":
+    pass
 
 # cur = conn.cursor()
 # cur.execute('''CREATE TABLE IF NOT EXISTS balance(
