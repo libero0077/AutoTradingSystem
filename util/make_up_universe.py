@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from googleapiclient.discovery import build
+from httplib2 import Http
+from oauth2client import file, client, tools
 
 BASE_URL = 'https://finance.naver.com/sise/sise_market_sum.nhn?sosok='  #네이버금융 기본 URL
 CODES = [0, 1] #KOSPI=0, KOSDAQ=1
@@ -98,6 +101,43 @@ def get_universe():
 
     df.to_excel('universe.xlsx')
     return df['종목명'].tolist()
+
+def upload_universe():
+    try:
+        import argparse
+        flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
+    except ImportError:
+        flags = None
+
+    SCOPES = 'https://www.googleapis.com/auth/drive.file'
+    store = file.Storage('storage.json')
+    creds = store.get()
+
+    if not creds or creds.invalid:
+        print("make new storage data file ")
+        flow = client.flow_from_clientsecrets(
+            'C:/Users/ljj94/PycharmProjects/SystemTrading/client_secret_291263649090-6puhu1as252jeglhbr1dumrvskadv481.apps.googleusercontent.com.json',
+            SCOPES)
+        creds = tools.run_flow(flow, store, flags) if flags else tools.run(flow, store)
+
+    DRIVE = build('drive', 'v3', http=creds.authorize(Http()))
+
+    FILES = (
+        ('C:/Users/ljj94/PycharmProjects/SystemTrading/universe.xlsx'),
+    )
+
+    folder_id = '1oc_FUuCgsCtiqUwQbOUoY1YlQCgk8SIN'
+
+    for file_title in FILES:
+        file_name = file_title
+        metadata = {'name': 'universe.xlsx',
+                    'parents': [folder_id],
+                    'mimeType': None
+                    }
+
+        res = DRIVE.files().create(body=metadata, media_body=file_name).execute()
+        if res:
+            print('Uploaded "%s" (%s)' % (file_name, res['mimeType']))
 
 if __name__ == "__main__":  #이 모듈을 import할 때 이 코드들은 실행되지 않게 함
     print('Start')

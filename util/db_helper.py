@@ -1,7 +1,7 @@
 import sqlite3
+import pandas as pd
 # conn = sqlite3.connect('universe_price.db', isolation_level=None) #universe_price라는 데이터베이스 파일에 연결하겠다는 의미. 있으면 연결, 없으면 생성.
 #                                                                   #isolation_level을 None으로 하면 일일이 커밋 안해도됨.
-
 def check_table_exist(db_name, table_name):
     with sqlite3.connect('{}.db'.format(db_name)) as con:   #매개변수를 파일명으로 하는 db파일 생성
         cur = con.cursor()
@@ -16,6 +16,14 @@ def check_table_exist(db_name, table_name):
 def insert_df_to_db(db_name, table_name, df, option="replace"):
     with sqlite3.connect('{}.db'.format(db_name)) as con:
         df.to_sql(table_name, con, if_exists=option)    #to_sql은 DataFrame객체가 사용할 수 있는 함수, 테이블이름, 데이터베이스 연결 객체(con), option(replace(이미 데이터 있으면 이걸로 대체))전달
+
+def make_code_dictionary(db_name):
+    with sqlite3.connect('{}.db'.format(db_name)) as con:
+        code_dict = pd.read_sql_query('select code, code_name from universe', con)
+        code_dict = code_dict.set_index('code').T.to_dict('index')
+        code_dict = code_dict['code_name']
+        code_dict = {v:k for k,v in code_dict.items()}
+        return code_dict
 
 def execute_sql(db_name, sql, param={}):
     with sqlite3.connect('{}.db'.format(db_name)) as con:

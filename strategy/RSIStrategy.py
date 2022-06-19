@@ -3,6 +3,7 @@ from util.make_up_universe import *
 from util.db_helper import *
 from util.time_helper import *
 from util.notifier import *
+from util.get_sentiment_data import *
 import math
 import traceback
 
@@ -13,6 +14,7 @@ class RSIStrategy(QThread):
         self.kiwoom = Kiwoom()
 
         self.universe = {} #유니버스 정보를 담는 딕셔너리
+        self.sentiment = {}
         self.deposit = 0  # 계좌 예수금
         self.is_init_success = False  # 초기화 함수 성공 여부 확인 변수
 
@@ -21,11 +23,13 @@ class RSIStrategy(QThread):
     def init_strategy(self):    #전략 초기화 함수
         try:
             self.check_and_get_universe()       #유니버스 생성함수 작동
+            self.get_sentiment_data()           #감성수치를 받아오기
             self.check_and_get_price_data()     #가격정보 조회, 필요시 생성
             self.kiwoom.get_order()             #주문정보확인
             self.kiwoom.get_balance()           #잔고확인
             self.deposit = self.kiwoom.get_deposit()    #예수금확인
             self.set_universe_real_time()       #유니버스 실시간 체결 정보 등록
+
             self.is_init_success = True         #여기까지 도달할때에만 True로 바꿈
 
         except Exception as e:
@@ -55,6 +59,7 @@ class RSIStrategy(QThread):
             })
 
             insert_df_to_db(self.strategy_name, 'universe', universe_df)    #universe라는 이름으로 DB에 저장
+            upload_universe()  # 구글드라이브에 universe 업로드
 
         sql = "select * from universe"
         cur = execute_sql(self.strategy_name, sql)
@@ -66,12 +71,20 @@ class RSIStrategy(QThread):
             }
         print(self.universe)
 
+    def get_sentiment_data(self):
+        if check_new_sentiment():
+            download_sentiment_data()  # 구글드라이브의 감성수치를 로컬에 내려받기(업데이트)
+
+        code_dict = make_code_dictionary(self.strategy_name)  # 종목코드-기업명 딕셔너리
+        self.sentiment = get_sentiment_data(code_dict)  # 종목코드-감성수치 딕셔너리로 변환
+
     def check_and_get_price_data(self):     #일봉 데이터가 있는지 확인하고 없으면 생성 *주의 : 일봉데이터는 전일(금일제외)까지의 데이터임
         for idx, code in enumerate(self.universe.keys()):
             print("({}/{}) {}".format(idx + 1, len(self.universe), code))
 
             if check_transaction_closed() and not check_table_exist(self.strategy_name, code):  #일봉 데이터가 아예 없는지 확인(장 종료 이후)
                 price_df = self.kiwoom.get_price_data_daily(code)   #API를 이용해 조회한 가격 데이터를 price_df에 저장
+                price_df['sentiment'] = ''
                 insert_df_to_db(self.strategy_name, code, price_df)    #코드를 테이블 이름으로 해서 데이터베이스에 저장
             else:   #일봉데이터가 있으면
                 if check_transaction_closed():  #장이 종료되면 api를 이용해 얻어온 데이터 저장
@@ -80,11 +93,11 @@ class RSIStrategy(QThread):
 
                     last_date = cur.fetchone()  #일봉 데이터를 저장한 가장 최근일자 조회
 
-                    now = datetime.now().strftime("20220504") #오늘 날짜를 yyyymmdd형태로 지정
+                    now = datetime.now().strftime("%Y%m%d") #오늘 날짜를 yyyymmdd형태로 지정
 
                     if last_date[0] != now:     #최근 저장 일자가 오늘이 아닌지 확인
                         price_df = self.kiwoom.get_price_data_daily(code)
-
+                        price_df.loc[now,'sentiment'] = self.sentiment[code]
                         insert_df_to_db(self.strategy_name, code, price_df) #코드를 테이블 이름으로 해서 데이터베이스에 저장
 
                 else:   #장 시작 전이거나 장 중인 경우 데이터베이스에 저장된 데이터 조회
@@ -117,8 +130,9 @@ class RSIStrategy(QThread):
         low = self.kiwoom.universe_realtime_transaction_info[code]['저가']
         close = self.kiwoom.universe_realtime_transaction_info[code]['현재가']
         volume = self.kiwoom.universe_realtime_transaction_info[code]['누적거래량']
+        sentiment = ''
 
-        today_price_data = [open, high, low, close, volume] #오늘 가격 데이터를 과거 가격 데이터의 행으로 추가하기 위해 리스트를 만듦
+        today_price_data = [open, high, low, close, volume, sentiment] #오늘 가격 데이터를 과거 가격 데이터의 행으로 추가하기 위해 리스트를 만듦
 
         df = universe_item['price_df'].copy()   #원본데이터에 영향을 주지 않기 위해 copy()를 사용
 
@@ -172,8 +186,11 @@ class RSIStrategy(QThread):
         low = self.kiwoom.universe_realtime_transaction_info[code]['저가']
         close = self.kiwoom.universe_realtime_transaction_info[code]['현재가']
         volume = self.kiwoom.universe_realtime_transaction_info[code]['누적거래량']
+        sentiment = ''
 
-        today_price_data = [open, high, low, close, volume] #오늘 가격 데이터를 과거 가격 데이터의 행으로 추가하기 위해 리스트를 만듦
+        today_price_data = [open, high, low, close, volume, sentiment
+
+                            ] #오늘 가격 데이터를 과거 가격 데이터의 행으로 추가하기 위해 리스트를 만듦
 
         df = universe_item['price_df'].copy()  # 원본데이터에 영향을 주지 않기 위해 copy()를 사용
 

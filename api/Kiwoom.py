@@ -207,7 +207,7 @@ class Kiwoom(QAxWidget):
             self.tr_data = self.balance
 
         self.tr_event_loop.exit()   #TR 요청 응답 대기를 종료하는 코드
-        time.sleep(0.5)    #키움 API 정책 상 1초에 최대 5회의 요청만 허가됨. 0.2초당 1회씩 요청 가능하나 좀 더 여유있게 0.25초로 설정
+        time.sleep(1)    #키움 API 정책 상 1초에 최대 5회의 요청만 허가됨. 0.2초당 1회씩 요청 가능하나 좀 더 여유있게 0.25초로 설정
 
     def send_order(self, rqname, screen_no, order_type, code, order_quantity, order_price,  #주문 발생, RQName, 주문유형(매수도, 취소 등), 종목코드, 수량, 가격 등을 매개변수로 받음.
                    order_classification, origin_order_number=""):
@@ -220,10 +220,10 @@ class Kiwoom(QAxWidget):
     def set_real_reg(self, str_screen_no, str_code_list, str_fid_list, str_opt_type):   #실시간 체결 정보 수신을 희망하는 종목들을 등록
         self.dynamicCall("SetRealReg(QString, QString, QString, QString", str_screen_no, str_code_list, str_fid_list, str_opt_type)
 
-        time.sleep(0.5)
+        time.sleep(1)
 
     def _on_receive_real_data(self, s_code, real_type, real_data):   #실시간 데이터를 수신하는 함수
-        if real_type == "장시작시간": #장 시작 시간이 늦어져도 큰큰 문제 없게함.
+        if real_type == "장시작시간": #장 시작 시간이 늦어져도 큰 문제 없게함.
             pass
 
         elif real_type == "주식체결":    #체결 정보를 수신할 경우 작동됨.
